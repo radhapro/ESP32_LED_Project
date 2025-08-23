@@ -26,7 +26,7 @@ class _LedControlPageState extends State<LedControlPage> {
   // SERVER URL ABHI KHAALI CHHOD DO, HUM BAAD ME BHARENGE
   final String _serverUrl = "https://led-control-project.onrender.com/set-status";
   Future<void> _toggleLed() async {
-    setState(() {
+    setState(() {  
       _isLoading = true;
       _message = "Sending command...";
     });
@@ -47,7 +47,7 @@ class _LedControlPageState extends State<LedControlPage> {
         setState(() {
           _message = "Error: Server rejected the command";
         });
-      }
+      }  
     } catch (e) {
       setState(() {
         _message = "Error: Check connection or server URL";
