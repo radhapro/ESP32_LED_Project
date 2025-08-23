@@ -1,87 +1,83 @@
-// =================== FINAL LED CONTROL ESP32 CODE (HTTPS FIX) ===================
+ // =================== REAL-TIME ESP32 CODE (with WebSockets) ===================
 #include <Arduino.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h> // HTTPS ke liye yeh zaroori hai
-#include <HTTPClient.h>
+#include <WebSocketsClient.h> // Ghanti sunne waali library
 #include <ArduinoJson.h>
 
 // ============== YAHAN APNI DETAILS DAALO ===================
-// NOTE: Yeh details aap pehle hi daal chuke ho, bas check kar lena
-const char* ssid = "Robozz Lab";
-const char* password = "Robotics@cloud";
+const char* ssid = "Lab_12345";
+const char* password = "Lamda12345";
 
-// Yeh aapke naye server ka bilkul sahi URL hai
-String serverUrl = "https://led-control-project.onrender.com/get-status";
+// YEH AAPKE NAYE SERVER KA HOSTNAME HAI (https:// ke bina)
+const char* server_host = "led-control-project.onrender.com"; 
+// SERVER KA PORT (HTTPS ke liye 443 hota hai)
+const int server_port = 443;
 
-// LED jis pin se judi hai. ESP32 par D2 (GPIO 2) hota hai.
-const int ledPin = 2; 
+const int ledPin = 2;
 // ==========================================================
 
-void setup() {
-  Serial.begin(115200);
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, LOW);
-  delay(1000);
+WebSocketsClient webSocket; // Humara "kaan" jo ghanti sunega
 
-  Serial.print("WiFi se jud raha hai...");
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\nWiFi jud gaya!");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+// Yeh function tab chalta hai jab ghanti bajti hai (server se message aata hai)
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+    switch(type) {
+        case WStype_DISCONNECTED:
+            Serial.println("WebSocket disconnect ho gaya!");
+            break;
+        case WStype_CONNECTED:
+            Serial.println("WebSocket jud gaya!");
+            // Server ko batao ki hum taiyaar hain
+            // Socket.IO protocol ke hisaab se pehle '2' bhejna hota hai
+            webSocket.sendTXT("2");
+            break;
+        case WStype_TEXT:
+            Serial.printf("Server se message mila: %s\n", payload);
+            
+            // Aaye hue message ko samjho
+            // Message kuch aisa dikhega: 42["led_status_update","ON"]
+            if (payload[0] == '4' && payload[1] == '2') {
+                StaticJsonDocument<200> doc;
+                deserializeJson(doc, &payload[2]); // Shuru ke '42' ko chhod do
+                
+                const char* eventName = doc[0];
+                const char* status = doc[1];
+
+                if (strcmp(eventName, "led_status_update") == 0) {
+                    if (strcmp(status, "ON") == 0) {
+                        Serial.println("COMMAND: LED ko ON kar raha hoon");
+                        digitalWrite(ledPin, HIGH);
+                    } else {
+                        Serial.println("COMMAND: LED ko OFF kar raha hoon");
+                        digitalWrite(ledPin, LOW);
+                    }
+                }
+            }
+            break;
+    }
+}
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(ledPin, OUTPUT);
+    digitalWrite(ledPin, LOW);
+    delay(1000);
+
+    // WiFi se connect karo (waisa hi hai)
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("\nWiFi jud gaya!");
+
+    // Ab server se WebSocket (ghanti sunne waala) connection banao
+    // URL me /socket.io/?EIO=4&transport=websocket likhna zaroori hai
+    webSocket.beginSSL(server_host, server_port, "/socket.io/?EIO=4&transport=websocket", "", "https");
+    webSocket.onEvent(webSocketEvent); // Server se koi bhi message aane par kya karna hai
+    webSocket.setReconnectInterval(5000); // Agar connection toote to har 5 sec me try karo
 }
 
 void loop() {
-  if (WiFi.status() == WL_CONNECTED) {
-    
-    // HTTPS Connection ke liye setup
-    WiFiClientSecure client;
-    client.setInsecure(); // WARNING: Hum certificate check nahi kar rahe hain (testing ke liye aasan)
-    HTTPClient http;
-    
-    Serial.println("Server se status poochh raha hoon...");
-    Serial.println("Connecting to URL: " + serverUrl);
-
-    // Client aur URL, dono ke saath connection shuru karo
-    if (http.begin(client, serverUrl)) {
-
-      int httpResponseCode = http.GET();
-
-      if (httpResponseCode == 200) { // Agar server ne "OK" bola
-        String payload = http.getString();
-        Serial.println("Jawaab mila: " + payload);
-
-        // JSON jawaab ko samjho
-        StaticJsonDocument<200> doc;
-        deserializeJson(doc, payload);
-        const char* status = doc["status"]; // "ON" ya "OFF" nikalo
-
-        // LED ko control karo
-        if (strcmp(status, "ON") == 0) {
-          Serial.println("LED ko ON kar raha hoon");
-          digitalWrite(ledPin, HIGH); // LED ON
-        } else {
-          Serial.println("LED ko OFF kar raha hoon");
-          digitalWrite(ledPin, LOW); // LED OFF
-        }
-
-      } else {
-        Serial.print("Error code: ");
-        Serial.println(httpResponseCode);
-      }
-
-      http.end();
-    } else {
-      Serial.println("URL se connection nahi ban pa raha hai.");
-    }
-
-  } else {
-    Serial.println("WiFi Disconnected");
-  }
-
-  // 5 second ke liye ruko
-  delay(5000); 
+    // loop() ka kaam ab sirf connection zinda rakhna hai
+    webSocket.loop();
 }
