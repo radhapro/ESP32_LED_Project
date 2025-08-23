@@ -8,7 +8,7 @@
 const char* ssid = "Robozz Lab";
 const char* password = "Robotics@cloud";
 // SERVER URL ABHI KHAALI CHHOD DO, HUM BAAD ME BHARENGE
-String serverUrl = "https://led-control-project.onrender.com/get-status";
+String serverUrl =  "https://led-control-project.onrender.com/get-status";
 const int ledPin = 2;
 // ==========================================================
 
