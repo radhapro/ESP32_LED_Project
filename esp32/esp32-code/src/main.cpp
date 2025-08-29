@@ -19,6 +19,9 @@ const uint16_t websocket_server_port = 443; // Render ke liye 443 use karna hai 
 // 2. WebSocket Object Banana
 // =================================================================
 WebSocketsClient webSocket;
+// Heartbeat (ping-pong) ke liye timer
+unsigned long lastPingTime = 0;
+const unsigned long pingInterval = 30000; // 30 seconds
 
 // =================================================================
 // 3. WebSocket ke Events ko Handle Karna
@@ -51,7 +54,8 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 // =================================================================
 // 4. SETUP: Sirf ek baar chalta hai
 // =================================================================
-void setup() {
+void setup() 
+{
   Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW); // Shuru me LED ko band rakho
@@ -82,6 +86,15 @@ void setup() {
 // =================================================================
 // 5. LOOP: Baar-baar chalta rehta hai
 // =================================================================
-void loop() {
+void loop() 
+{
   webSocket.loop(); // WebSocket connection ko zinda rakho
+  // Heartbeat (Ping) bhejne ka logic
+  if (millis() - lastPingTime > pingInterval) {
+    lastPingTime = millis(); // Timer ko reset karo
+    if (webSocket.isConnected()) {
+      webSocket.sendPing(); // Server ko PING bhejo
+      Serial.println("-> Sent Ping to server");
+    }
+  }
 }

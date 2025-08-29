@@ -41,6 +41,12 @@ wss.on('connection', (ws) => {
     console.error('WebSocket Error:', error);
     esp32Socket = null;
   });
+
+  // Heartbeat ko zinda rakhne ke liye PING-PONG
+  ws.on('ping', () => {
+    console.log("Ping received from client. Sending Pong.");
+    ws.pong(); // Jaise hi ping aaye, pong bhejo
+  });
 });
 
 // =================================================================
