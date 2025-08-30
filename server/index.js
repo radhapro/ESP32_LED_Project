@@ -8,44 +8,38 @@ const WebSocket = require('ws');
 // =================================================================
 // 2. Server ki taiyari karna (Server Setup)
 // =================================================================
-const port = process.env.PORT || 3000; // Render apne aap port dega, local ke liye 3000
-const app = express(); // Express app banana
-const server = http.createServer(app); // Express app se HTTP server banana
-const wss = new WebSocket.Server({ server }); // Isi HTTP server se WebSocket server banana
+const port = process.env.PORT || 3000;
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-// Yeh variable hamare ESP32 ka connection store karega
 let esp32Socket = null; 
 
 // =================================================================
 // 3. WebSocket Connection ka Logic (The Hotline)
 // =================================================================
 wss.on('connection', (ws) => {
-  console.log('Client connected!'); // Jab bhi koi (ESP32) connect hoga, yeh message dikhega
+  console.log('Client connected!');
 
-  // ESP32 connect ho gaya hai, usko esp32Socket variable me save karlo
   esp32Socket = ws;
 
-  // Jab client se koi message aaye (future use ke liye)
   ws.on('message', (message) => {
     console.log(`Received message => ${message}`);
   });
 
-  // Jab client disconnect ho
   ws.on('close', () => {
     console.log('Client disconnected!');
-    esp32Socket = null; // Connection toot gaya, to variable khaali kardo
+    esp32Socket = null;
   });
 
-  // Connection par error aaye to
   ws.on('error', (error) => {
     console.error('WebSocket Error:', error);
     esp32Socket = null;
   });
 
-  // Heartbeat ko zinda rakhne ke liye PING-PONG
   ws.on('ping', () => {
     console.log("Ping received from client. Sending Pong.");
-    ws.pong(); // Jaise hi ping aaye, pong bhejo
+    ws.pong();
   });
 });
 
@@ -57,7 +51,7 @@ wss.on('connection', (ws) => {
 app.get('/led-on', (req, res) => {
   console.log("Flutter se '/led-on' request aayi");
   if (esp32Socket) {
-    esp32Socket.send('ON'); // ESP32 ko 'ON' message bhejo
+    esp32Socket.send('ON');
     res.send('LED ON command sent to ESP32!');
     console.log("ESP32 ko 'ON' command bheja gaya.");
   } else {
@@ -70,7 +64,7 @@ app.get('/led-on', (req, res) => {
 app.get('/led-off', (req, res) => {
   console.log("Flutter se '/led-off' request aayi");
   if (esp32Socket) {
-    esp32Socket.send('OFF'); // ESP32 ko 'OFF' message bhejo
+    esp32Socket.send('OFF');
     res.send('LED OFF command sent to ESP32!');
     console.log("ESP32 ko 'OFF' command bheja gaya.");
   } else {
@@ -78,6 +72,14 @@ app.get('/led-off', (req, res) => {
     console.log("Error: ESP32 connected nahi hai.");
   }
 });
+
+// <<< YEH HAI NAYA CODE JO UPTIMEROBOT KE LIYE HAI >>>
+// UptimeRobot jaise services ke liye, main route ('/') par jawaab dena
+app.get('/', (req, res) => {
+  res.send('Hello! The LED server is alive and well!');
+});
+// <<< YAHAN TAK HAI NAYA CODE >>>
+
 
 // =================================================================
 // 5. Server ko Chalu Karna (Start the Server)
